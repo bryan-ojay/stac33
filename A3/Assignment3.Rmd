@@ -1,0 +1,128 @@
+---
+title: "Assignment3"
+output: html_notebook
+---
+
+## Question 1
+
+We'll start by loading in the required libraries.
+```{r}
+library("tidyverse")
+```
+
+1a) We'll read in and display the population data from the required url:
+```{r}
+my_url <- "http://ritsokiguess.site/STAC32/pop.csv"
+population <- read_csv(my_url)
+population
+```
+
+1b) Since we have one quantitative variable, we'll plot the data in a histogram.
+The data for this study has a large number of observations, so we will determine the number of bins by using the `nclass.FD` function in R.
+```{r}
+nclass.FD(population$v)
+```
+Based on the function's output, we'll use 80 bins to sepearate the values in the histogram.
+
+```{r}
+ggplot(population, aes(x = v)) + geom_histogram(bins=40)
+```
+We can see there are high outliers which causes the population to be right skewed.
+However, we would still be able to run a t-test on this data, as the graph shows to have the shape of a normal distribution, thus proving the validity of the t-test for this data.
+
+1c) We're given the null hypothesis H_0 of mu = 4 (meaning the true mean is equal to 4), and we want to test it against the alternative hypothesis H_1 of mu > 4 (the true mean is greater than 4).
+
+We'll generate 1000 random samples of 10 observations from this population and run the t-test on each sample.
+We'll see how likely we are to reject the null hypothesis (shown by having our p-values less than 0.05).
+```{r}
+set.seed(1004112738)
+
+rerun(1000, sample(population$v, size=10, replace = TRUE)) %>%
+  map( ~ t.test(., mu = 4, alternative="greater")) %>%
+  map_dbl("p.value") %>% 
+  enframe(value="pvals") %>% 
+  count(pvals <= 0.05)
+```
+
+An explanation for the code above:  
+- the `rerun` functions allows us to gather 10 samples from the population 1000 times.  
+- for each sample, the `map` function runs the (one-sided) t.test on it with the null hypothesis (mu) equal to 4.  
+- the `map_dbl` function extracts the p-value from each t.test and places them in a list-like object  
+- the `enframe` function places the p-values in a table (or data frame, if you will)  
+- finally, the count function gives us the number of p-values less than 0.05.  
+
+If the p-value is less than 0.05 (TRUE), then we reject the null hypothesis. Else (FALSE), we fail to reject.
+From the simulation above, we would reject the null hypothesis a mere 160/1000 times approximately, or 16% of the time.
+
+1d) We will run the same simulation, this time taking a sample of 50 each time:
+```{r}
+set.seed(1004112738)
+
+rerun(1000, sample(population$v, size=50, replace = TRUE)) %>%
+  map( ~ t.test(., mu = 4, alternative="greater")) %>%
+  map_dbl("p.value") %>% 
+  enframe(value="pvals") %>% 
+  count(pvals <= 0.05)
+```
+
+With taking 50 samples at a time, we would reject the null hypothesis approximately 732/1000 times, or 73.2% of the time. This is to be expected as we're taking a larger sample size. and as a result the sample mean would be closer to the population mean.
+
+1e) We'll do another simulation for this question, but before that, since we are fortunate enough to have the data for the whole population, we can find out the true population mean. This will provide more insight once we conduct the t-test:
+```{r}
+mean(population$v)
+```
+
+Now we'll conduct the t-test, gathering 10 values for each sample and instead taking the null hypothesis as the mean (mu) is equal to 5, instead of 4. The alternative hypothesis will be the null hypothesis is greater than 5. 
+
+```{r}
+set.seed(1004112738)
+
+rerun(1000, sample(population$v, size=10, replace = TRUE)) %>%
+  map( ~ t.test(., mu = 5, alternative="greater")) %>%
+  map_dbl("p.value") %>% 
+  enframe(value="pvals") %>% 
+  count(pvals <= 0.05)
+```
+
+With this simulation, the null hypothesis would be rejected approximately 25/1000 times, or 2.5% of the time. This shows the simulation to be more accurate than what was actually expected. The sample size was smaller than that of the previous simulation, but it yielded better results. Even though the population mean was known, we would have expected that the results would have more spread, resulting in more of the t-tests rejecting the null hypothesis.
+
+
+## Question 2
+
+2a) We'll read in and display the data representing the amount of protein (in ounces) found in a sample of diet meal packages from the appropriate url:
+```{r}
+my_url = "http://ritsokiguess.site/STAC33/protein.txt"
+meals = read_delim(my_url, " ")
+meals
+```
+
+2b) Since we have one quantitative variable, we'll plot the data in a histogram.
+```{r}
+ggplot(meals, aes(x = protein)) + geom_histogram(bins=6)
+```
+
+2c) We can see that this graph is skewed to the left. This is to be expected, since the company producing the diet meals is highly unlikely to include more than the advertised amount of protein in their packages.
+Since the t-test would be measuring the mean protein amount from the packages, it would not be best to use this of test, as the mean would certainly be less than the advertised amount. The sign test, on the other hand, measures the median protein amount from the packages, and would be better suited for this data.
+
+2d) We'll now run a suitable sign tests for this data. The `smmr` library contains the functions we need to run the sign test.
+To install this package would require the 'devtools' library as it is hosted on github, but since I have it already installed, I will simply load the package:
+```{r}
+library(smmr)
+```
+
+We'll run the sign test on the protein data, with a null median of 6. The alternative hypothesis would state that the median is less than 6, so we'll be using the lower-tailed sign test for this data:
+```{r}
+sign_test(meals, protein, 6)
+```
+
+Generally we conduct our tests with 95% confidence, which requires a p-value of 0.05 or greater in order to retain (or fail to reject) the null hypothesis for the median (or null median). Since our p-value is approximately 0.0206, we would reject the null median of 6.
+
+2e) This result was quite predictable, as we could see from the `above_below` data that much less than half of the packages had a protein amount greater than or equal to 6 ounces. This in turn means the median is certain to be less than 6, making it much more likely to reject the null median.
+
+2f) Now we'll obtain a 90% confidence interval for the population median protein content of the diet meals. The `ci_median` function will be of use to us to calculate the confidence interval.
+
+```{r}
+ci_median(meals,protein,conf.level=0.90)
+```
+
+We can see that the 90% confidence interval does not contain the null median, equal to 6. This tells us that we were correct in rejecting the null median and that the company producing these diet meals does not reliably include 6 ounces of protein in each diet meal package.

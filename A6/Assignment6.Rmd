@@ -1,0 +1,60 @@
+---
+title: "Assignment 6"
+output: html_notebook
+---
+
+We'll start by loading in the required packages.
+```{r}
+library(tidyverse)
+```
+
+We have the data of 45 different rats who were placed on one of three diets with varying levels of isoflavones from the kudzu plant.
+
+a): In the data at http://ritsokiguess.site/STAC32/isoflavones.txt, we can see 2 columns; `treatment` shows the type of diets that the rats were placed on. The `low dose` and `high dose` treatments represent diets that had a low and high dose of isoflavones, respectively. The `control` treatment had no extra dose on isoflavones.
+
+Under the `bone_mineral_density` column is the observations of the bone density from each of the 15 rats under each treatment group, for a total of 45 observations.
+
+b): We'll now read in and show the data.
+```{r}
+my_url <- "http://ritsokiguess.site/STAC32/isoflavones.txt"
+isoflavones <- read_table(my_url)
+isoflavones
+```
+
+Now that we've loaded in the data, we can see there's an issue with the `bone_mineral_density` column, as each group of observations have been inputted into the table as three rows of strings, with each observation separated by a single space. This also causes an issue in the `treatment` column, as there are rows that are blank, not specifying any treatment column.
+
+The step-by-step process to fix this is as follows:  
+
+- We'll use the `na_if` function to change the blank columns to have an `NA` value. The `NA` value is how we properly denote a blank value in R.
+
+- Next we'll fill in those `NA` values with the respective treatment group, using the `fill` function. The correct treatment group for the rows with a blank entry is specified in the first of every three rows, so we will use those values to fill the values downward.
+
+- Next, the `separate_rows` function will break up the rows of strings into separate rows for each observation. In the process, we'll convert the entries from strings to integers.
+
+```{r}
+isoflavones %>% 
+  na_if("") %>%
+  fill(treatment, .direction="down") %>%
+  separate_rows(bone_mineral_density, sep=" ", convert=TRUE) -> isoflavones_tidy
+isoflavones_tidy
+```
+
+Our data is now tidy and suitable to make a graph with.
+
+c): At some point we will want to analyze the data. Before doing so, it may be a good idea to test the data's normality. For methods that test the means, such as analysis of variance, it is a requirement that the data resembles that of a normal distribution.
+
+Since we'll be testing the data in their respective groups, we'll test the normality of the groups separately. To do this we'll use facetted normal quantile plots.
+```{r}
+ggplot(isoflavones_tidy, aes(sample = bone_mineral_density)) 
++ stat_qq() + stat_qq_line() + facet_wrap(~fct_inorder(treatment))
+```
+Something to note: `facet_wrap(~fct_inorder(treatment))` takes the grouped data in the order it is presented in the data frame. If we only used `facet_wrap(~treatment)`, the plots would be shown in the  alphabetical order of the groups instead.
+
+We can see a few outliers on the ends of each graph, namely the lowest and highest points in the `control` group being higher on the plot, and the short tails on the `low_dose` and `high_dose` groups. These don't show to be much of an issue, however, as the data is still normal enough to test the means of the group observations.
+
+d): Given that we have 3 groups of 15 observations, all resembling a normal distribution, we are able to run the ANOVA test on the data. Subsequently, we would be able to run the Tukey Analysis on the data as well to test the means. Compared to t-tests or other methods, this is the best and most efficient way to test the data  as it tests all the means as once and adjusts the p-value accordingly.
+
+Sources:  
+`na_if function` - https://dplyr.tidyverse.org/reference/na_if.html  
+`separate_rows function` - https://www.rdocumentation.org/packages/tidyr/versions/0.8.3/topics/separate_rows  
+`fill function` - https://www.rdocumentation.org/packages/tidyr/versions/0.8.3/topics/fill 

@@ -1,0 +1,113 @@
+---
+title: "Assignment 5"
+author: Bryan Oladeji
+output: html_notebook
+---
+
+## Introduction
+
+This report offers an analysis on shampoo and the effects it has on dandruff. According to Healthline, the main symptoms of dandruff are an itchy, scaly scalp with white oily flakes accumulating in the hair and shoulders. 
+In this analysis, we will be examining 355 different subjects who have been randomly assigned to use one of the four shampoos being compared today. The subjects used their respective shampoos as treatment on their scalps for six weeks. Afterwards, results on the amount of flaking remaining were recorded on eight different location on the scalp, measured on a scale from 0 to 10, 0 being the best result, meaning close to no flaking. The amount of flaking is recorded as the sum of the eight scores.
+
+
+## Analysis
+Many of the functions we will be using in this analysis are in external libraries, so we will load them in for this report.
+```{r}
+library(tidyverse)
+library(smmr)
+```
+
+Next we'll read in and display the data for this analysis.
+```{r}
+my_url <- "http://ritsokiguess.site/STAC32/dandruff.txt"
+dandruff <- read_tsv(my_url)
+dandruff
+```
+
+We have a total of 355 subjects for this observation (as defined by the `OBS` column), and four different types of treatments:  
+`PyrI`, which represents 1% pyrithione zinc shampoo
+`PyrII`, which represents the same shampoo but with instructions to shampoo twice with each wash
+`Keto`, which represents 2% ketoconazole shampoo, and 
+`Placebo`, which represents a placebo shampoo
+
+The subjects have been divided into four groups, as shown by the `GroupNum` column, based on the type of shampoo they were instructed to use.
+
+### Visualizing the Data
+
+We have several techniques for analyzing the given data. First, we'll use boxplots to visualize the flaking for each treatment group.
+The `ggplot` function is used to create a data frame for the given data, which sets up our boxplot, provided with the `geom_boxplot` function.
+```{r}
+ggplot(dandruff, aes(x=Treatment, y=Flaking)) + geom_boxplot()
+```
+The boxplot for each treatment group can tell us quite a number of things. Most notably it tells us what the median amount of flaking for each treatment group is, as represented by the thick black line located on the inside of each white box. It shows us how much the values in the group are dispersed from the median.
+
+We can see from this data that the medians for the `Keto`, `PyrI` and `PyrII` groups are all about equal, while the `Placebo` group shows to have a median much higher than the others. From this we can say that the Placebo shampoo is almost certainly not the best shampoo out of the four.
+
+The white box shows us each group's __interquartile range__, which represents the shape of the spread of a group's results. The bottom of the white box tells us the 1st quartile, also known as the 25th percentile (the value higher than 25 percent of all the data), and the top of the white box tells us the 3rd quartile, also known as the 75th percentile.
+
+The interquartile range for the `Keto` group and `PyrII` group are quite similar, while the `PyrI` group shows to have one that is approximately half the size.  
+The black vertical lines, also known as "whiskers", tell us what the minimum and maximum values of each group are from the observed data, excluding any outliers.  
+The outliers are values in the data that are much higher or lower than the rest of the data. These are represented by black dots that extend beyond the whiskers. We can see that the `PyrI` group has both an upper and lower outlier in its data.
+
+While this helps narrows down our selection, the boxplot doesn't quite tell us enough about which shampoo will result in the least amount of flaking in the scalp. We can use more detailed methods to analyze the data instead.
+
+### Normality of the Data
+
+Before we move on to other methods, we'll test the normality of the given data. In other words, we have to see if the flaking values for each treatment group resembles the shape of a normal distribution when graphed. To do this, we'll use another type of plot called the normal quantile plot.
+
+We'll use the `ggplot` function once again to set up the graphs. 
+The `stat_qq` function plots the data points on the graph, and the `stat_qq_line` function computes the slope and intercept of the points according to their quartiles.
+The `facet_wrap` function splits the data into their respective treatment groups and graphs them separately.
+
+We assess the normality of the data by seeing how closely the data points given by the `stat_qq` function are to the line given by the `stat_qq_line` function.
+```{r}
+ggplot(dandruff, aes(sample=Flaking, colour=Treatment)) + stat_qq() + stat_qq_line() + facet_wrap(~Treatment, scales="fixed")
+```
+
+We can see for all 4 graphs that the data points lie close enough to the slope that the data can be considered normal.
+
+We've already assessed with the boxplots that the Placebo group is not the best shampoo to use, so we can omit it from the rest of the testing we want to do.
+```{r}
+dandruff %>% filter(GroupNum != 4) -> dandruff_filtered
+dandruff_filtered
+```
+
+### Conducting the test
+
+Now that we have tested the normality of the data, we'll move on to the actual analysis.
+The first analysis we will do is an analysis of variance, or ANOVA for short. It will test the hypothesis of all the remaining groups having the same mean amount of flaking. This is known as our __null hypotheis__.
+It was necessary to test the normality of the data before this step so we could ensure that there was no skewness involved that would affect the mean amounts of flaking in the treatment groups.
+
+For extra precaution, we'll check how man subjects are present in each treatment group. The closer the groups are to being equal, the more accurate the ANOVA will be:
+```{r}
+dandruff_filtered %>% count(Treatment)
+```
+Thankfully, the number of subjects in each group are very similar.
+
+Conducting the ANOVA, we get the following result.
+```{r}
+dandruff_anova <- aov(Flaking ~ Treatment, data=dandruff_filtered)
+summary(dandruff_anova)
+```
+
+What we want to look at here is our __p-value__, which is the probability of our null hypothesis being true, represented by the `Pr(>F)` label. The p-value is less than  0.0000000000000002, which is extremely small, so we reject the null hypothesis.
+In most scenarios, we would fail to reject the null hypothesis if the p-value was greater than 0.05.
+
+So now we know that the mean amounts of flaking are different, but we still don't know which shampoo will give us the lowest of those means.
+
+Thus, we'll have to run yet another analysis. This time we will use the Tukey "Honestly Significant Differences" analysis. This test uses our results from the ANOVA and shows us which of the means are _significantly different_ from each other.
+
+```{r}
+TukeyHSD(dandruff_anova)
+```
+
+From this analysis, we can see that the mean amount of flaking of the Keto treatment group is at least 1 'flake' lower than both means in the PyrI and PyrII groups. Thus, we can say that the Keto group showed to have the lowest mean amount of flaking.
+
+
+## Conclusion
+It is important to note that some assumptions have been made during this analysis. For one, we assume that all the subjects had the same or a similar amount of flaking in their scalp before the six week treatment had started. 
+
+Nonetheless, from this analysis we can proclaim the 2% ketoconazole shampoo as the winner and the best choice for getting rid of flaking in the hair. The 1% pyrithione zinc shampoo also performed quite well, with only a small difference between both of them and the ketoconazole group.
+
+## Citation
+Marcin, Ashley. "Dandruff: What Your Itchy Scalp Is Trying to Tell You". _healthline_. Updated May 11, 2019. Retrieved March 4, 2020 from https://www.healthline.com/health/dandruff-itchy-scalp.

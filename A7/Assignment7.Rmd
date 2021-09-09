@@ -1,0 +1,88 @@
+---
+title: "Assignment 7"
+output: html_notebook
+---
+
+#### (a.) 
+We'll start by loading in the required packages. The data frame we'll be using is included in the `nycflights13` package, so we'll have to install it first.
+
+```{r}
+install.packages("nycflights13")
+```
+
+Now we can load in the desired libraries.
+```{r}
+library(tidyverse)
+library(nycflights13)
+```
+
+Within the `nycflights13` package, one of the data frames included, named `airports`, contains information about several airports in North America.
+
+We want to get the names of the three major airports in New York City. Since we know their FAA airport codes (EWR, JFK, LGA), we'll use the airports data frame to obtain this data.
+```{r}
+airports %>% 
+  filter(faa == "EWR" | faa == "JFK" | faa == "LGA")  %>%
+  select(faa, name) -> popular_airports
+popular_airports
+```
+A quick breakdown of the code: from the airports data frame, we use the `filter` function to find every entry whose `faa` value matches the FAA codes that we want. Then, the `select` function allows us to choose specifically which rows we want to display, which are the `faa` and `name` columns.
+
+#### (b.)
+Next, we want to find the number of flights that departed from each of these popular airports in 2013. The `flights` data frame contains detailed data of every one of the flights that departed from these three airports, so all we need is the number of flights that departed from each of them.
+```{r}
+flights %>% 
+  group_by(origin) %>%
+  summarize(num_flights = n()) %>%
+  left_join(popular_airports, by=c("origin" = "faa")) %>%
+  select(origin, name, num_flights)
+```
+The `group_by` function allows us to classify each flight by it's `origin`, or the airport that the flight departed from. Afterwards, we `summarize` the data to get the number of flights from each airport, as shown in the `num_flights` column. Next we get the airports names from the `popular_airports` data frame using the `left_join` function. Finally we omit all the columns we don't need by using the `select` function, choosing only the faa code, name and number of flights departed for each airport.
+(NOTE: We didn't have to use `filter` here as the `flights` data frame only contains data from these three popular airports.)
+
+#### (c.)
+Here's another question: What are the places that are the most frequently travelled to from New York? We can use our `flights` data frame once again to answer this question.
+```{r}
+flights %>%
+  group_by(dest) %>%
+  summarize(num_flights = n()) %>%
+  arrange(desc(num_flights)) %>%
+  head(5) %>% 
+  left_join(airports, by=c("dest" = "faa")) %>%
+  select(dest, name, num_flights)
+```
+Breaking down this code:  
+- Just as in the previous question, we use the `group_by` and `summarize` functions to get the number of flights reated to each airport, only this time we're working with the destination airports instead of the departing airpots.   
+- We `arrange` the data by the number of flights, in descending order, to get an ordered list of the largest number of incoming flights at each airport to the smallest.  
+- The `head` function displays the 5 first entries in the data, which gives us the first 5 airports with the highest number of incoming flights.  
+- Next we `left_join` with the `airports` data frame to get the airport names.
+- Finally, we `select` only the columns we want to see, which are the destination airport's FAA codes, names and number of flights coming to them from New York City.  
+
+#### (d.)
+Now, we want to make an analysis of this data. We're aiming to see if, in the event where there is a lack of visibility while flying, there is a correlation to the amount of time a flight gets delayed. We will use a combination of the `flights` and `weather` data frames to obtain data regarding the time the flight was delayed and the miles of visibility from the airport, respectively.
+
+```{r}
+flights %>% 
+  left_join(weather, by=c("time_hour", "origin")) %>% 
+  filter(!is.na(dep_delay) & !is.na(visib)) %>%
+  select(origin, time_hour, dep_delay, visib) -> delay_visib
+delay_visib
+```
+We start by applying a `left_join` on `flights` and `weather`, joining them together with the `time_hour` and `origin` functions. The `filter` function is used to omit any rows that do not have data for the amount of delay before departure or the miles of visibility from the airport.
+The `select` function as seen before is used to display our desired columns. 
+
+#### (e.)
+Next, we want to find a suitable plot to visualize our data. Given that we have two quantitative variables, a scatter plot (or something similar) would be best for this data.
+We'll use the `delay_visib` data frame from the previous question to analyze the data.
+
+Plotting the scatterplot as-is looks like this (side-note: takes a bit of time to load):
+```{r}
+delay_visib %>%
+  ggplot(aes(x = visib, y = dep_delay)) + 
+  geom_point()
+```
+
+It's safe to say that there are quite a lot of points on these plots. From this plot, there doesn't seem to be much (or any) correlation between the visibility and the amount of delay before departure. Over the course of all levels of visibility, we can see very similar values of delays ranging from less than 0 minutes up to 400 or 500 minutes, including several outliers as well.
+
+From a quick glance of this plot, it would be easy to say that there is no correlation between the visibility and the amount of delay before departure. It's important to take into account, however, that at the times where visibility is very low, flights may be cancelled altogether instead of delayed, so there may be multiple entries that aren't included in this data.
+
+There are also other factors that could be noted, including the specific airport each flight is taken from, the month or day that the flight took place (winter months most likely have a higher frequency of flights with lower visibility), and other issues where flights were grounded for reasons outside of visibility. Thus, we can't simply say a decrease in the amount of visibility from the airport will result in an increase in the delay of a flight.

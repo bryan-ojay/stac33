@@ -1,0 +1,103 @@
+---
+title: "Assignment 9"
+output: html_notebook
+---
+
+## Question 1
+
+We'll start by loading in the required libraries:
+```{r}
+library(tidyverse)
+```
+
+
+(1a) Next we'll read in and display (some of) the data:
+```{r}
+my_url = "http://ritsokiguess.site/STAC32/pulsemarch.csv"
+pulse <- read_csv(my_url)
+head(pulse)
+```
+This data displays the pulse rates of 40 male and female students, both at resting rate and after marching in one place for a minute.
+
+(1b) We have a categorical variable (Sex) and two quantitative variables (Before, After)
+With this we can use a scatterplot with points grouped by Sex. The Before variable will act as independent and After will act as the dependent variable.
+We'll also fit a regression line for each group of data.
+```{r}
+ggplot(pulse, aes(x = Before, y = After,
+  colour = Sex)) +
+  geom_point() + geom_smooth(method = "lm", se = F)
+```
+
+(1c) We can see that a person's resting or "Before" pulse rate generally affects their "After" pulse rate. There is a weak positive correlation between the two variables, meaning a higher resting pulse rate would most likely result in a higher pulse rate after marching in one place for one minute.
+
+We can also see from the graph that compared to the male students in this observation, the trend of female students' "After" pulse rates seems to be slightly higher when looking at student with the same resting heart rate. 
+
+(1d) We'll run a regression output with the Before and Sex variables as the explanatory variables, and After as the response variable.
+```{r}
+pulse.1 <- lm(After ~ Before + Sex, data=pulse)
+summary(pulse.1)
+```
+(1e) I wouldn't say I'm surprised with the results from the explanatory variables. 
+Firstly, we can expect that after a person marches in place for one minute, their pulse rate will increase, as shown from the values in the After column being higher than those in the Before column. 
+Secondly, we know that those who have a relatively high resting pulse rate would also have a relatively high "After" pulse rate, since one's pulse rate is generally expected to increase after doing some sort of exercise.
+
+Also looking at the relationship between the After and Sex variables, I'm not surprised to see the After values relatively close to each other (although the Female group looks to be slightly higher), as marching in one place for one minute is not a typically high-energy exercise.
+
+(1f) The value for the Estimate for `Sex` tells us that the Male and Female after-pulse rates differ by about 4.8191, with the Female group having the higher pulse rate. The R summary notes this variable as `SexMale` because we use the Female group as the baseline.
+
+
+## Question 2
+We want to calculate the coefficient of variation for a vector input `x`.  
+The coefficient variation of x, or `cv(x)` is defined as `sd(x) / mean(x)`, or the standard deviation of x divided by the mean of x.
+
+(2a) We'll write a function in R to calculate the CV.
+```{r}
+cv <- function(x) {
+  sd(x) / mean(x)
+}
+```
+
+(2b) Next we'll test it on a vector of the set of integers from 1 to 5.
+```{r}
+cv(1:5)
+```
+The value is equal to about `0.5270463`.
+
+(2c) We'll define a new vector to use on our function and run it accordingly.
+```{r}
+v <- c(-2.8, -1.8, -0.8, 1.2, 4.2)
+cv(v)
+```
+
+The CV is calculated to be about $6.2485 \cdot 10^{16}$. This isn't quite the value we were expecting.
+To see why this value is what was shown, we can show the standard deviation and mean separately:
+```{r}
+sd(v)
+mean(v)
+```
+
+Now if we take the actual mean of the vector, it would be equal to 0, which means the CV would go to infinity. R calculates the mean as an extremely small positive number instead, due to how the addition and subtraction of decimal numbers is handled in R. This is based on the subject of floating point numbers, and calculating the mean of the values in this vector gives us a noticeable floating point error.
+
+Here's another example of floating point error:
+```{r}
+0.1 + 0.2 == 0.3
+print(0.1 + 0.2, digits=18)
+```
+You'd expect the two sides to be equal, but the floating point algorithm stores the result of `0.1 + 0.2` as `0.3` with a bit of "residue".
+
+(2d) Given the results above, we can decide to calculate the CV on vectors that are positive, meaning all of their values must be greater than 0. To implement this in our function, we can use the `stopifnot` command.
+```{r error=TRUE}
+cv_2 <- function(x) {
+  stopifnot(x > 0)
+  sd(x) / mean(x)
+}
+```
+
+We'll try to use this function on the vector we previously defined.
+```{r error=TRUE}
+cv_2(v)
+```
+We can see that it's running as intended.
+
+Sources:  
+R Documentation on floating point algorithms:   https://cran.r-project.org/doc/FAQ/R-FAQ.html#Why-doesn_0027t-R-think-these-numbers-are-equal_003f 

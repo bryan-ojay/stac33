@@ -1,0 +1,117 @@
+---
+title: "Assignment 8"
+output: html_notebook
+---
+
+We'll start by installing the required packages that we don't yet have.
+
+We'll start by loading in the required libraries.
+```{r}
+library(MASS)
+library(tidyverse)
+library(broom)
+```
+
+(a.) Next we'll read in and display some of the data.
+```{r}
+my_url <- "http://ritsokiguess.site/STAC32/heightfoot.csv"
+heightfoot <- read_csv(my_url)
+head(heightfoot)
+```
+The data here displays the foot length and height measurements of 33 male students. The unit of measurement is not given.
+
+(b.) We're only given two quantitative variables for this data, so the best way to plot the data would be to use a scatterplot.
+
+We'll plot a person's height against the length of their foot, and we'll use a regression line to identify a trend in the data.
+
+```{r}
+ggplot(heightfoot, aes(x = foot, y = height)) + 
+  geom_point() + geom_smooth(method="lm", se = F)
+```
+We can see from the line that the points have a weak positive correlation. Generally speaking, we can say that the longer a student's foot size, the taller that student is.
+
+(c.) We can see one observation that differs significantly from the rest of the trend, with a foot size of 27 units. and a height between 85 and 90 units.
+
+This is unusual compared to the data points of other students having a foot length of 27 units, as this particular student is much taller compared to the rest of the students.
+There are also two students that have the shortest heights (with foot lengths 25.5 and 27), but these observations are close enough to the line for us to not consider them outliers.
+
+(d.) 
+Next we'll fit all the observations into a regression model.
+```{r}
+hf.fit <- lm(height ~ foot, data=heightfoot)
+summary(hf.fit)
+```
+We can see from the R-squared value that roughly 31.73% of the data was fit by our model, which signifies it's not that great of a fit. We can plot the residuals against the fitted values in a scatterplot to see how well the model fits the data. Afterwards we can use a normal quantile plot to assess the normality of the residuals.
+
+```{r}
+ggplot(hf.fit, aes(y = .resid, x = .fitted)) + geom_point()
+```
+
+
+
+```{r}
+ggplot(hf.fit, aes(sample=.resid)) + stat_qq() + stat_qq_line()
+```
+The data in our quantile plot shows to be close to the line, except for our outlier point and some of the other low and high points.
+
+(e.) On our scatterplot, we can see most of the data points having residuals ranging from -2.5 to 2.5, with a few reaching close to -5 or 5. Our outlier point, however, is closer to a residual value of 15.
+
+On our quantile 
+
+(f.) We only have one outlier, and it is clear to see that its height is the highest out of all the points. So we can find the index of the row that contains the maximum height. The built-in `which.max` function can help us with this. We can then simply make a new data frame without that row.
+```{r}
+outrow <- which.max(heightfoot$height)
+heightfoot2 <- heightfoot[-outrow, ]
+slice_max(heightfoot2, order_by=height, n=5)
+```
+We use the `slice_max` function to display the rows in the data with the highest heights. We can see now that our outlier is not in the new data frame.
+
+(g.) With our newly amended data, we'll create a new regression model to fit the data.
+```{r}
+hf2.fit <- lm(height ~ foot, data=heightfoot2)
+summary(hf2.fit)
+```
+Removing the outlier gives us an increase in the data that was fit by our model, up to roughly 57.41%
+
+Plotting the residuals against the fitted values now gives us this:
+```{r}
+ggplot(hf2.fit, aes(y = .resid, x = .fitted)) + geom_point()
+```
+
+And plotting the normal quantile plot now gives us this:
+```{r}
+ggplot(hf2.fit, aes(sample=.resid)) + stat_qq() + stat_qq_line()
+```
+
+(h.) The residual scatterplot looks to be normal as it is evenly spread around 0, with no discernable pattern between the points, so there's no problems there.
+
+The normal quantile plot looks to have long tails, with the lowest values being noticeably below the line and the highest values being noticeably higher. However, the tails are not long enough for us to have a problem with normality in this analysis.
+
+(i.) Next, we'll plot both sets of data on one graph, with the regression lines for both sets of data.
+
+First we'll combine the data into one data frame for our `ggplot` to graph. We'll discern the data points from each other with a new `model` column, that shows us which of the data sets includes or excludes the outlier.
+
+After that, we use the `bind_rows` function to combine the two data frames into one.
+This is a somewhat hacky wait of plotting the data, but it gets the job done.
+```{r}
+heightfoot %>% mutate(model = "with_outlier") -> hf1
+heightfoot2 %>% mutate(model = "no_outlier") -> hf2
+
+bind_rows(hf1, hf2) %>% group_by(model) -> hf_all
+hf_all
+```
+
+And now, for our plot.
+```{r}
+hf_all %>% 
+  ggplot(aes(x = foot, y = height, colour=model)) +
+  geom_point(colour="black") +
+  geom_smooth(method="lm", se=F)
+```
+
+(j.) When the regression outlier was removed, we could see that the regression line gained a more positive slope, and the intercept decreased, as expected. The high outlier data point caused the regression line to have less of a slope, and a worse fit for the data.
+
+
+Sources:  
+`which.max` function - https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/which.min  
+`bind_rows` function - https://dplyr.tidyverse.org/reference/bind.html

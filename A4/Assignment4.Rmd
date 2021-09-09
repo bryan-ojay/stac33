@@ -1,0 +1,112 @@
+---
+title: "Assignment4"
+output: html_notebook
+---
+
+## Question 1
+
+We'll start by loading in the required libraries.
+```{r}
+library(tidyverse)
+library(smmr)
+```
+
+1a) We'll read in and display some data.
+```{r}
+my_url <- "http://ritsokiguess.site/STAC32/blood_pressure1.csv"
+blood_pressure <- read_csv(my_url)
+blood_pressure
+```
+The data presented here shows the measurements of the blood pressure of ten randomly chosen individuals immediately before and one hour after their dentist appointments. 
+
+1b) We are interested in seeing if there is a decrease in blood pressure between the two times the measurements occur. For this, we will be using the matched pairs analysis. Another method that we would be able to use for this analysis is the two-independent-samples analysis (using a two-sample t-test). 
+
+Using the matched pairs analysis is more suitable as we are only testing for the difference in the "before" and "after" measurements. It removes much of the variability that would come from using other methods of analysis.
+
+1c) We'll run a paired t-test on the data. The t-test will test the null hypothesis that the means of the measurements are both equal.
+```{r}
+with(blood_pressure, t.test(before, after, paired=T))
+```
+
+The p-value is equal to 0.01, which means, under the assumption that our data is normally distributed, we have strong evidence to reject the null hypothesis, and there is a significant difference between the means of the blood pressures before and after going for a dentist's appointment.
+
+1d) We'll now run a sign test on the data. The sign test we use will test against the differences of the means of the blood pressures.
+To test this, we'll first create a new column in the data to list the difference of the means:
+```{r}
+blood_pressure %>% mutate(diff=before-after) -> blood_pressure
+blood_pressure
+```
+
+Now we'll run the sign test, testing with the null hypothesis that the median of the difference of the means is equal to 0, otherwise known as the *null median*. The alternative hypothesis tests that the median is greater than 0, so we'll be look at the upper column.
+```{r}
+sign_test(blood_pressure, diff, 0)
+```
+
+The sign test runs with 95% confidence, so we would need a p-value less than 0.05 to reject the null median. Given that the p-value here is 0.0546875, we do not have enough evidence to reject the null median with this test.
+
+1e) Seeing as the two tests don't agree with each other, we'll display the points of the data in a normal quantile plot to assess the normality.
+
+```{r}
+ggplot(blood_pressure, aes(sample=diff)) + stat_qq() + stat_qq_line()
+```
+
+The values on the low end are lower than the line, and the values at the high end are higher than the line, which gives us two indications that the data is left skewed and thus not noormally distributed.
+
+1f) Seeing as the data is not distributed normally, a t-test is not suitable for this data. Therefore, the sign test is more appropriate for this data, and we can conclude that we do not have enough evidence to support the claim that one's blood pressure before going for a dentist appointment would generally be higher than when one hour after the dentist appointment is completed.
+
+## Question 2
+
+2a) We'll read in and partially display some more data.
+```{r}
+my_url <- "http://ritsokiguess.site/STAC32/handspan.txt"
+students <- read_delim(my_url, " ")
+students
+```
+The data here represents the measurements of the handspans of students in a statistics classs at Penn State University
+
+
+2b) We want to display two normal quantile plots, one for the male students and one for the female students. For this data, the most suitable plot is the faceted normal quantile plot.
+```{r}
+ggplot(students, aes(sample=handspan, colour=sex)) + stat_qq() + stat_qq_line() + facet_wrap(~sex, scales="fixed")
+```
+
+For the female students, the values in the respective plot are all quite close to the line, except for a few lower outliers. The plot shows to be normally distributed except for those .outliers
+
+The plot representing the male students also shows the values to be normally distributed except for a few low points (not as low as those on the female students' plot).
+This is important to note as it may have a great effect on the normality of the data.
+
+2c) Given the skewness of the data on the lower end, perhaps it would be preferable to run a difference test instead of a standard two-sample t-test. Mood's median test works well in this case, as it allows us to find the medians of three different groups of data and test against the medians being equal to each other.
+
+
+2d) We'll now commence the Mood's median test.
+First we'll find the median of all the student handspans.
+```{r} 
+#1/4
+students %>% summarize(med=median(handspan)) %>% pull(med) -> m
+m
+```
+
+We'll now create a contingency table to count howw many of the measured handspans are above or below the median:
+
+```{r}
+tab <- with(students, table(sex, handspan > m))
+tab 
+```
+
+We can see that most of the female students have handspans below the overall median, while most of the male students have handspans above the overall median. This suggests that there is a noticeable difference between the medians of each group separately.
+
+Now we'll test whether the association between the sex and being above/below the overall median is significant, using the chi-squared test for association.
+
+```{r}
+chisq.test(tab,correct=F)
+```
+
+The p-value is miniscule, which tells us that we have strong evidence that being above or below the overall median depends on which group you are in.
+
+To verify our results, we'll run the `median_test` function from the `smmr` library.
+
+```{r}
+median_test(students, handspan, sex)
+```
+
+The p-value here is even smaller than in the chi-squared test, which verifies our findings that the medians between both groups is different.

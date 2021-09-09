@@ -1,0 +1,59 @@
+---
+title: "Assignment 2"
+output:
+  html_document:
+    df_print: paged
+---
+
+## Question 1
+
+```{r}
+library(tidyverse)
+```
+
+
+a) We'll read in and display some of the cholesterol measurements of heart attack patients:
+```{r}
+my_url <- "http://ritsokiguess.site/STAC32/cholest.csv"
+cholest <- read_csv(my_url)
+cholest
+```
+
+b) We'll plot the data of the control patients:
+```{r}
+num_bins=nclass.FD(cholest$control)
+ggplot(cholest, aes(x = control)) + geom_histogram(bins=num_bins)
+```
+
+c) We can see from the graph that the bars representing the number of people are higher on the values that are 200 or below. This means there are more people in the control group that have a cholesterol level in this range compared to the amount of people with a level above 200. From this we can conclude that the mean of the sample is most likely less than 200.
+
+d) Now we will further infer on what could be possible values of the mean:
+```{r}
+t.test(cholest$control)
+```
+Based on this output, we are 95% confident that the mean cholesterol level of the control group is between 184 and 201.
+
+e) We're satisfied with the results from this t-test, as we can see from the histogram that the sample has a shape that shows to be normally distributed and right-skewed. We do not have doubts about the normality of the graph, so we don't have doubts in the validity of this procedure.
+
+## Question 2
+
+a) We'll read and display some of the data of two groups of students participating in an anchoring experiment:
+```{r}
+my_url <- "http://ritsokiguess.site/STAC32/anchoring.csv"
+anchoring <- read_csv(my_url)
+anchoring
+```
+
+b) We'll now plot the data on a suitable plot:
+```{r}
+ggplot(anchoring, aes(x=anchor, y=estimate)) + geom_boxplot()
+```
+
+c) We want to use the Welch t-test for this sample, the pooled t-test treats the variance of each group as being equal (which we can see is clearly not the case here).
+
+d) We'll run the t-test and deduce a result:
+```{r}
+t.test(estimate~anchor, data=anchoring)
+```
+
+e) We can see that the average guess between the two groups has a very large difference between them. The group anchored towards the Australia population had an average guess for the population of Canada being 22.45 million people. On the other sample, the group anchored towards the US population had an average guess of 88.35 million people. Thus we can conclude that the anchoring effect is very much at play in this sample.
