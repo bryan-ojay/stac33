@@ -1,0 +1,67 @@
+---
+title: "Assignment1"
+output: html_document
+---
+
+## Question 1
+
+We'll start by loading in the required libraries.
+```{r}
+library("tidyverse")
+```
+
+Now to load in the rainfall data from the url.
+```{r, message=F}
+my_url <- "http://ritsokiguess.site/STAC32/rainfall.txt"
+rainfall <- read_delim(my_url," ")
+rainfall
+```
+The data in the .txt file is separated by exactly one space. The read_delim() function reads the data from the file and separates it into columns based on the 'space' between each of the data values.
+
+The data of the rainfall for Davis, California spans from 1951 to 1997, which is a total of 47 years. The data shows to have exactly 47 rows, which means we have the correct amount.
+
+We can see that the columns in the data are formatted correctly; the Year column shows each year from 1951 to 1997 in order, and the Rainfall column shows how much rainfall (in inches) was recorded in each respective year.
+
+The data now has to be displayed in a suitable plot.
+
+```{r, fig.height=3.4}
+ggplot(rainfall, aes(x = Year, y = Rainfall)) + geom_point()
+```
+
+A scatterplot is the most suitable for this data as we are dealing with 2 quantitative variables and none that are categorical.
+
+We'll now add a regression line to the data.
+
+```{r, fig.height=3.6}
+ggplot(rainfall, aes(x = Year, y = Rainfall)) +
+  geom_point() + geom_smooth(method = "lm")
+```
+
+While the regression line has a slightly upwards slant, several of the data points have a large distance away from the line. Because of this, we can't conclude that there is any significant upward or downward trend for the annual rainfall in Davis, California.
+
+## Question 2
+```{r, message=F}
+my_url <- "http://ritsokiguess.site/STAC33/algebra.txt"
+algebra <- read_table(my_url)
+algebra
+```
+The data shows the algebra final exam scores (out of 100) of students in a New Jersey high school. Of these students, 20 of them were said to have used a laptop to study for the exam, and 27 others were said to have not. This gives us 47 students in total. The data also has exactly 47 rows, which means the data has been read in correctly.
+
+The read.table function is used here instead of read_delim because the data is separated by multiple spaces, instead of exactly one.
+
+We'll now display the data in a boxplot, since we have 1 categorical and 1 quantitative variable.
+```{r, fig.height=4}
+ggplot(algebra, aes(x=laptop, y=score)) + geom_boxplot()
+```
+
+We can see that the scores of the students who used laptops to study for their algebra exam is generally higher and has less of a variance compared to those who did not use laptops. There are a few lower outliers, the lowest of such also being in the group that did not use laptops to study.
+
+We'll now calculate the median and interquartile range separately for the two groups of students.
+```{r}
+algebra %>% 
+  group_by(laptop) %>%
+  summarize(across(where(is.numeric), list(med=~median(.), iqr=~IQR(.))))
+```
+
+The group of students who did not use laptops has a median of 81% and an IQR of 20%,
+while the group of students who used laptops has a median of 84% and an IQR of 13%. This matches the output in the boxplot, as we can see that the median of the group that used laptops is higher, and there is less dispersion between the scores compared to the group that did not use laptops.
